@@ -1,12 +1,27 @@
+import 'package:flare_flutter/flare_controls.dart';
 import 'package:flutter/material.dart';
 import 'package:flare_flutter/flare_actor.dart';
 import 'package:flare_tutorial/smart_flare_animation.dart';
+
+enum AnimationToPlay {
+  Activate,
+  Deactivate,
+  CameraTapped,
+  PulseTapped,
+  ImageTapped
+}
 
 class SmartFlareAnimation extends StatefulWidget {
   State<SmartFlareAnimation> createState() => _SmartFlareAnimationState();
 }
 
 class _SmartFlareAnimationState extends State<SmartFlareAnimation> {
+// create our flare controls
+  final FlareControls animationControls = FlareControls();
+
+  AnimationToPlay _animationToPlay = AnimationToPlay.Deactivate;
+  AnimationToPlay _lastPlayAnimation;
+
   // width and height retrieved from the artboard values in the animation
   static const double AnimationWidth = 295;
   static const double AnimationHeight = 251;
@@ -19,37 +34,72 @@ class _SmartFlareAnimationState extends State<SmartFlareAnimation> {
         height: AnimationHeight,
         child: GestureDetector(
           onTapUp: (tapInfo) {
-            var localTouchPosition = (context.findRenderObject() as RenderBox)
-                .globalToLocal(tapInfo.globalPosition);
-
-            // where did we touch
-            var topHalfTouched = localTouchPosition.dy < AnimationHeight / 2;
-            var leftSideTouched = localTouchPosition.dx < AnimationHeight / 3;
-            var rightSideTouched = localTouchPosition.dx < AnimationHeight / 3;
-            var middleTouched = !leftSideTouched && !rightSideTouched;
-
-            if (leftSideTouched && rightSideTouched) {
-              print("TopLeft");
-            } else if (middleTouched && topHalfTouched) {
-              print("TopMiddle");
-            } else if (rightSideTouched && topHalfTouched) {
-              print("TopRight");
-            } else {
-              if (isOpen) {
-                print("Bottom Close");
-              } else {
-                print("Bottom Open");
-              }
-            }
-
             setState(() {
-              isOpen = !isOpen;
+              var localTouchPosition = (context.findRenderObject() as RenderBox)
+                  .globalToLocal(tapInfo.globalPosition);
+
+              // where did we touch
+              var topHalfTouched = localTouchPosition.dy < AnimationHeight / 2;
+              var leftSideTouched = localTouchPosition.dx < AnimationHeight / 3;
+              var rightSideTouched =
+                  localTouchPosition.dx > (AnimationWidth / 3) * 2;
+              var middleTouched = !leftSideTouched && !rightSideTouched;
+
+              if (leftSideTouched && topHalfTouched) {
+                print("TopLeft");
+                _setAnimationToPlay(AnimationToPlay.CameraTapped);
+              } else if (middleTouched && topHalfTouched) {
+                // print("TopMiddle");
+                _setAnimationToPlay(AnimationToPlay.PulseTapped);
+              } else if (rightSideTouched && topHalfTouched) {
+                // print("TopRight");
+                _setAnimationToPlay(AnimationToPlay.ImageTapped);
+              } else {
+                if (isOpen) {
+                  // print("Bottom Close");
+                  _setAnimationToPlay(AnimationToPlay.Deactivate);
+                } else {
+                  // print("Bottom Open");
+                  _setAnimationToPlay(AnimationToPlay.Activate);
+                }
+
+                isOpen = !isOpen;
+              }
+
+              // isOpen = !isOpen;
             });
           },
-          child: FlareActor(
-            'assets/button-animation.flr',
-            animation: isOpen ? 'activate' : 'deactivate',
-          ),
+          child: FlareActor('assets/button-animation.flr',
+              controller: animationControls,
+              animation: _getAnimationName(_animationToPlay)),
         ));
+  }
+
+  String _getAnimationName(AnimationToPlay animationToPlay) {
+    switch (animationToPlay) {
+      case AnimationToPlay.Activate:
+        return 'activate';
+      case AnimationToPlay.Deactivate:
+        return 'deactivate';
+      case AnimationToPlay.CameraTapped:
+        return 'camera_tapped';
+      case AnimationToPlay.PulseTapped:
+        return 'pulse_tapped';
+      case AnimationToPlay.ImageTapped:
+        return 'image_tapped';
+      default:
+        return 'deactivate';
+    }
+  }
+
+  void _setAnimationToPlay(AnimationToPlay animation) {
+    var isTappedAnimation = _getAnimationName(animation).contains("_tapped");
+    if (isTappedAnimation && _lastPlayAnimation == AnimationToPlay.Deactivate) {
+      return;
+    }
+    animationControls.play(_getAnimationName(animation));
+
+    // remember our last played animation
+    _lastPlayAnimation = animation;
   }
 }
